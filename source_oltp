@@ -1,0 +1,153 @@
+-- Code for Source System:
+--create container table
+
+--Table#1
+CREATE TABLE container (
+container_id INT PRIMARY KEY,
+container_name VARCHAR(250),
+carrier_id INT,
+container_size_meters INT,
+goods_cost DECIMAL,
+container_capacity INT
+);
+
+
+--Insert Data for containers
+INSERT INTO container (container_id, container_name, carrier_id, container_size_meters, goods_cost, container_capacity)
+VALUES (1,'Ultra Large Container Vessel', 1, 400, 99235.444, 14501), (2, 'New Panamax', 2, 366, 75463.9038, 10000),
+(3, 'Panamax', 3, 294, 4255.9879, 5000), (4, 'Moby Dick', 4, 700, 99999.99999, 15000), (5, 'Feeder Max', 5, 290, 57642.888, 3000);
+
+SELECT * FROM container;
+
+--Table#2
+CREATE TABLE carriers (
+carrier_id INT PRIMARY KEY,
+carrier_name VARCHAR(250)
+);
+
+--INSERT Data for carriers
+
+INSERT INTO carriers (carrier_id,carrier_name) 
+VALUES 
+(1,'Carrier A'),(2,'Carrier B'),(3,'Carrier C'),(4,'Carrier D'),(5,'Carrier E');
+
+
+SELECT * FROM carriers;
+
+--Table#3
+CREATE TABLE shipment (
+shipment_id INT PRIMARY KEY,
+shipment_source VARCHAR(250),
+shipment_destination VARCHAR(250),
+start_date DATE,
+end_date DATE,
+carrier_id INT,
+shipment_type_id INT,
+CONSTRAINT fk2_carrier_id FOREIGN KEY(carrier_id) REFERENCES carriers(carrier_id) ON DELETE CASCADE,
+CONSTRAINT fk3_shipment_type_id FOREIGN KEY(shipment_type_id) REFERENCES shipment_types(shipment_type_id) ON DELETE SET NULL
+);
+
+--Inserting data for shipment:
+INSERT INTO shipment (shipment_id,shipment_source, shipment_destination, start_date, end_date, carrier_id, shipment_type_id)
+VALUES (1, 'United States', 'Pakistan', '2018-01-10', '2018-02-10', 1, 3), (2, 'United States', 'Mexico', '2018-01-30', '2018-02-15', 2, 2),
+(3, 'Pakistan', 'United Arab Emirates', '2019-05-05', '2019-05-30', 3, 3), (4, 'Argentina', 'Russia', '2019-02-12', '2019-02-18', 4, 1),
+(5,'Afghanistan', 'Iran', '2018-05-05', '2018-05-15', 5, 2);
+
+select * from shipment;
+
+--Table#4
+CREATE TABLE shipment_types (
+shipment_type_id INT PRIMARY KEY,
+shipment_type_name VARCHAR(250)
+);
+
+--Inserting data for Shipment_types:
+INSERT INTO shipment_types (shipment_type_id, shipment_type_name)
+VALUES (1, 'Air shipping'), (2, 'Road Shipping'), (3, 'Sea Shipping');
+
+
+select * from shipment_types;
+
+--Table#5
+CREATE TABLE shipment_legs (
+shipment_leg_id INT PRIMARY KEY,
+shipment_leg_name VARCHAR(250),
+shipment_leg_start_date DATE,
+shipment_leg_end_date DATE,
+shipment_id INT,
+container_id INT,
+CONSTRAINT fk4_shipment_id FOREIGN KEY(shipment_id) REFERENCES shipment(shipment_id) ON UPDATE CASCADE,
+CONSTRAINT fk5_container_id FOREIGN KEY(container_id) REFERENCES container(container_id) ON DELETE CASCADE
+);
+
+--Inserting data into shipment_legs 
+
+INSERT INTO shipment_legs (shipment_leg_id, shipment_leg_name, shipment_leg_start_date, shipment_leg_end_date, shipment_id, container_id)
+VALUES 
+(1, 'Hamburg', '2018-01-22', '2018-01-28', 1,1), (2, 'Houston', '2018-02-01', '2018-02-04', 2,2), (3, 'Karachi', '2019-05-10', '2019-05-15', 3,3),
+(4, 'Riyadh', '2019-02-13', '2019-02-14', 4,4), (5, 'Kabul', '2018-05-07', '2018-05-09',5,5);
+
+SELECT * from shipment_legs;
+
+
+--Table#6
+	CREATE TABLE shipment_events (
+shipment_event_id INT PRIMARY KEY,
+shipment_event_duration numeric(5,2), --duration in days
+shipment_event_date DATE,	
+shipment_leg_id INT,
+port_id INT,
+event_type_id INT,
+CONSTRAINT fk6_shipment_leg_id FOREIGN KEY(shipment_leg_id) REFERENCES shipment_legs(shipment_leg_id) ON UPDATE CASCADE,
+CONSTRAINT fk7_port_id FOREIGN KEY(port_id) REFERENCES port(port_id) ON UPDATE CASCADE,
+CONSTRAINT fk8_event_type_id FOREIGN KEY(event_type_id) REFERENCES event_types(event_type_id) ON DELETE SET NULL
+);
+
+select * from shipment_events;
+
+--Inserting data to Shipment_events:
+
+INSERT INTO shipment_events (shipment_event_id, shipment_event_duration, shipment_event_date, shipment_leg_id, port_id, event_type_id)
+VALUES (1, 1, '2018-01-22',1,1,1), (2, 4, '2018-01-23',1,1,2), (3, 1, '2018-01-28',1,1,3), (4, 1, '2018-02-01',2,2,1), (5, 2, '2018-02-03',2,2,2), (6, 1, '2018-02-04',2,2,3),
+(7, 1, '2019-05-10',3,3,1), (8, 4, '2019-05-14',3,3,2), (9, 1, '2019-05-15',3,3,3), (10, 1, '2019-02-13',4,4,1), (11, 1, '2019-02-13',4,4,2), (12, 1, '2019-02-14',4,4,3),
+(13, 1, '2018-05-07',5,5,1), (14, 1, '2018-05-08',5,5,2),(15, 1, '2018-05-09',5,5,3);
+
+
+SELECT * FROM shipment_events;
+
+--Table#7
+CREATE TABLE port (
+port_id INT PRIMARY KEY,
+port_name VARCHAR(250),
+shipment_id INT,
+shipment_leg_id INT,
+CONSTRAINT fk9_shipment_id FOREIGN KEY(shipment_id) REFERENCES shipment(shipment_id) ON UPDATE CASCADE,
+CONSTRAINT fk10_shipment_leg_id FOREIGN KEY(shipment_leg_id) REFERENCES shipment_legs(shipment_leg_id) ON DELETE SET NULL
+);
+
+--Inserting data into port:
+INSERT INTO port (port_id, port_name, shipment_id, shipment_leg_id)
+VALUES (1, 'Hamburg Port', 1, 1), (2, 'SugarLand', 2,2), (3, 'Karachi Port', 3,3), (4, 'Bin Qasim Port', 4,4), (5, 'Pathan Port Kabul', 5, 5);
+
+SELECT * FROM port;
+
+--Table#8
+CREATE TABLE event_types (
+event_type_id INT PRIMARY KEY,
+event_type_name VARCHAR(250)
+);
+
+
+-- Insert event rows:
+
+INSERT INTO event_types (event_type_id, event_type_name)
+VALUES (1, 'Gate In'), (2, 'Vessel Load'), (3, 'Vessel Departure');
+
+
+SELECT * FROM event_types;
+
+
+
+
+
+
