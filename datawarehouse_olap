@@ -1,0 +1,276 @@
+-- creating DW tables:
+
+-- Creating dimension table #1 carriers
+
+create table shipping_dw.carriers_dim (
+carrier_id serial primary key,
+carrier_name VARCHAR(250)
+);
+
+--inserting data 
+insert into shipping_dw.carriers_dim (carrier_name)
+(select carrier_name from public.carriers);
+
+SELECT * FROM shipping_dw.carriers_dim;
+
+-- Creating Dimension Table#2 Container
+
+create table shipping_dw.container_dim (
+container_id serial primary key,
+container_name VARCHAR(250),
+carrier_id int,
+CONSTRAINT fk1_carrier_id FOREIGN KEY(carrier_id) REFERENCES shipping_dw.carriers_dim(carrier_id) ON DELETE CASCADE	
+);
+
+SELECT * from shipping_dw.container_dim;
+
+--inserting data into 2nd dimension container
+
+insert into shipping_dw.container_dim (container_name,carrier_id)
+(select c.container_name, c.carrier_id
+from public.container c);
+
+
+
+--Creating 3rd dimension table Shipment Types:
+
+create table shipping_dw.shipment_types_dim (
+shipment_type_id serial primary key,
+shipment_type_name VARCHAR(250)
+);
+
+
+--inserting data into 3rd dimension shipment_types
+insert into shipping_dw.shipment_types_dim (shipment_type_name)
+(select shipment_type_name from public.shipment_types);
+
+select * from shipping_dw.shipment_types_dim;
+
+--Creating 4th dimension table Shipment:
+
+create table shipping_dw.shipment_dim (
+shipment_id serial primary key,
+shipment_source VARCHAR(250),
+shipment_destination VARCHAR(250),
+carrier_id int,
+shipment_type_id int,	
+CONSTRAINT fk2_carrier_id FOREIGN KEY(carrier_id) REFERENCES shipping_dw.carriers_dim(carrier_id) ON DELETE CASCADE,
+CONSTRAINT fk3_shipment_type_id FOREIGN KEY(shipment_type_id) REFERENCES shipping_dw.shipment_types_dim (shipment_type_id) ON DELETE SET NULL	
+);
+
+SELECT * from shipping_dw.shipment_dim;
+
+SELECT * from shipment;
+
+-- inserting data into 4th dimension shipment
+
+insert into shipping_dw.shipment_dim (shipment_source,shipment_destination, carrier_id, shipment_type_id)
+(select s.shipment_source, s.shipment_destination, s.carrier_id, s.shipment_type_id
+from public.shipment s);
+
+--Creating 5th dimension table Shipment Legs:
+
+CREATE TABLE shipping_dw.shipment_legs_dim (
+shipment_leg_id serial primary key,
+shipment_leg_name VARCHAR(250),
+container_id INT,
+shipment_id INT,
+CONSTRAINT fk4_shipment_id FOREIGN KEY(shipment_id) REFERENCES shipping_dw.shipment_dim(shipment_id) ON UPDATE CASCADE,
+CONSTRAINT fk5_container_id FOREIGN KEY(container_id) REFERENCES shipping_dw.container_dim(container_id) ON DELETE CASCADE
+);
+
+
+-- Inserting data into 5th Dimension table:
+insert into shipping_dw.shipment_legs_dim (shipment_leg_name,container_id, shipment_id)
+(select sl.shipment_leg_name, sl.container_id, sl.shipment_id
+from public.shipment_legs sl);
+
+select * from shipping_dw.shipment_legs_dim; 
+
+
+-- Creating 6th Dimension Event_types
+
+CREATE TABLE shipping_dw.event_type_dim (
+event_type_id serial primary key,
+event_type_name VARCHAR(250)
+);
+
+-- Inserting data into 6th Dimension Table:
+insert into shipping_dw.event_type_dim (event_type_name)
+(select event_type_name from public.event_types);
+
+select * from shipping_dw.event_type_dim;
+
+-- Creating 7th Dimension Port:
+
+CREATE TABLE shipping_dw.port_dim (
+port_id serial primary key,
+port_name VARCHAR(250),
+shipment_id INT,
+shipment_leg_id INT,
+CONSTRAINT fk6_shipment_id FOREIGN KEY(shipment_id) REFERENCES shipping_dw.shipment_dim(shipment_id) ON UPDATE CASCADE,
+CONSTRAINT fk7_shipment_leg_id FOREIGN KEY(shipment_leg_id) REFERENCES shipping_dw.shipment_legs_dim(shipment_leg_id) ON DELETE SET NULL
+);
+
+-- Inserting data into 7th Dimension Table:
+insert into shipping_dw.port_dim (port_name, shipment_id, shipment_leg_id)
+(select port_name, shipment_id, shipment_leg_id from public.port);
+
+SELECT * from shipping_dw.port_dim 
+
+-- Creating 8th Dimension Shipping Events:
+
+CREATE TABLE shipping_dw.shipment_events_dim (
+shipment_event_id serial primary key,	
+shipment_leg_id INT,
+port_id INT,
+event_type_id INT,
+CONSTRAINT fk8_shipment_leg_id FOREIGN KEY(shipment_leg_id) REFERENCES shipping_dw.shipment_legs_dim(shipment_leg_id) ON UPDATE CASCADE,
+CONSTRAINT fk9_port_id FOREIGN KEY(port_id) REFERENCES shipping_dw.port_dim(port_id) ON UPDATE CASCADE,
+CONSTRAINT fk10_event_type_id FOREIGN KEY(event_type_id) REFERENCES shipping_dw.event_type_dim(event_type_id) ON DELETE SET NULL
+);
+
+-- Inserting data into 8th Dimension Table:
+insert into shipping_dw.shipment_events_dim (shipment_leg_id, port_id, event_type_id)
+(select shipment_leg_id, port_id, event_type_id from public.shipment_events);
+
+SELECT * from shipping_dw.shipment_events_dim
+
+-- Creating 9th Dimension Date:
+DROP TABLE IF EXISTS shipping_dw.date_dim;
+CREATE TABLE shipping_dw.date_dim (
+date_id serial primary key,	
+start_date DATE,
+end_date DATE,
+shipment_leg_start_date DATE,
+shipment_leg_end_date DATE,
+shipment_event_date DATE,
+shipment_id int,
+shipment_leg_id int,
+shipment_event_id int,
+CONSTRAINT fk11_shipment_id FOREIGN KEY(shipment_id) REFERENCES shipping_dw.shipment_dim(shipment_id) ON UPDATE CASCADE,
+CONSTRAINT fk12_shipment_leg_id FOREIGN KEY(shipment_leg_id) REFERENCES shipping_dw.shipment_legs_dim(shipment_leg_id) ON UPDATE CASCADE,
+CONSTRAINT fk13_shipment_event_id FOREIGN KEY(shipment_event_id) REFERENCES shipping_dw.shipment_events_dim(shipment_event_id) ON DELETE SET NULL
+);
+
+--Inserting data in 9th Table:
+
+
+Select * from shipping_dw.date_dim;
+
+-- now inserting data for date:
+insert into shipping_dw.date_dim (start_date,end_date,shipment_leg_start_date,shipment_leg_end_date,shipment_event_date,shipment_id,shipment_leg_id,shipment_event_id)
+(select s.start_date, s.end_date, sl.shipment_leg_start_date, sl.shipment_leg_end_date, se.shipment_event_date, sd.shipment_id, sld.shipment_leg_id, sed.shipment_event_id
+ from  public.shipment s, public.shipment_legs sl, public.shipment_events se, shipping_dw.shipment_dim sd, shipping_dw.shipment_legs_dim sld, 
+ shipping_dw.shipment_events_dim sed
+ where s.shipment_id = sd.shipment_id
+ AND sl.shipment_leg_id = sld.shipment_leg_id
+ AND se.shipment_event_id = sed.shipment_event_id 
+ );
+
+
+-- Creating 10th Dimension Fact:
+
+CREATE TABLE shipping_dw.fact_dim (	
+carrier_id int references shipping_dw.carriers_dim (carrier_id),
+container_id int references shipping_dw.container_dim (container_id),
+shipment_type_id int references shipping_dw.shipment_types_dim (shipment_type_id),
+shipment_id  int references shipping_dw.shipment_dim (shipment_id),
+shipment_leg_id int references shipping_dw.shipment_legs_dim (shipment_leg_id), 
+event_type_id int references shipping_dw.event_type_dim (event_type_id),
+port_id int references shipping_dw.port_dim (port_id),
+shipment_event_id int references shipping_dw.shipment_events_dim (shipment_event_id),
+date_id int references shipping_dw.date_dim (date_id), 
+container_size_meters int,
+goods_cost decimal,
+container_capacity int,
+shipment_event_duration numeric(5,2),
+primary key (carrier_id, container_id, shipment_type_id, shipment_id, shipment_leg_id, event_type_id, port_id, shipment_event_id, date_id)
+);
+
+select* from shipping_dw.fact_dim;
+--Inserting into Dimension #10 Fact Table:
+
+
+insert into shipping_dw.fact_dim 
+(select cd.carrier_id, 
+ 		cnd.container_id, 
+ 		std.shipment_type_id, 
+ 		sd.shipment_id, 
+ 		sld.shipment_leg_id, 
+ 		etd.event_type_id, 
+ 		pd.port_id, 
+ 		sed.shipment_event_id, 
+ 		dd.date_id,
+ 		cn.container_size_meters, 
+ 		cn.goods_cost, 
+ 		cn.container_capacity, 
+ 		se.shipment_event_duration
+from 
+ 		public.container cn, 
+ 		public.shipment s,
+ 		public.shipment_legs sl, 
+ 		public.shipment_events se, 
+ 		shipping_dw.carriers_dim cd, 
+ 		shipping_dw.container_dim cnd, 
+ 		shipping_dw.shipment_types_dim std,
+ 	 	shipping_dw.shipment_dim sd, 
+ 		shipping_dw.shipment_legs_dim sld, 
+ 		shipping_dw.event_type_dim etd,
+ 	 	shipping_dw.port_dim pd, 
+ 		shipping_dw.shipment_events_dim sed,
+ 		shipping_dw.date_dim dd
+ where cn.carrier_id = cd.carrier_id
+ AND cn.container_id = cnd.container_id
+ AND sl.shipment_leg_id = sld.shipment_leg_id
+ AND s.shipment_id = sd.shipment_id
+ AND se.shipment_event_id = sed.shipment_event_id
+ AND se.port_id = pd.port_id
+ AND se.event_type_id  = etd.event_type_id
+ AND s.start_date = dd.start_date
+ AND s.end_date = dd.end_date
+ AND sl.shipment_leg_start_date =dd.shipment_leg_start_date
+ AND sl.shipment_leg_end_date =dd.shipment_leg_end_date
+ AND se.shipment_event_date = dd.shipment_event_date 
+);
+
+
+
+
+-- query to make sense:-
+
+
+SELECT DISTINCT
+		cd.carrier_name, 
+		cnd.container_name, 
+		std.shipment_type_name, 
+		sd.shipment_source, sd.shipment_destination, 
+		sld.shipment_leg_name,
+		etd.event_type_name, 
+		pd.port_name, 
+		dd.start_date, dd.end_date, dd.shipment_leg_start_date, dd.shipment_leg_end_date, dd.shipment_event_date,
+		fd.container_size_meters, fd.goods_cost, fd.container_capacity, fd.shipment_event_duration
+from 
+	shipping_dw.fact_dim fd,
+	shipping_dw.carriers_dim cd, 
+	shipping_dw.container_dim cnd,
+	shipping_dw.shipment_types_dim std,
+	shipping_dw.shipment_dim sd,
+	shipping_dw.shipment_legs_dim sld,
+	shipping_dw.event_type_dim etd,
+	shipping_dw.port_dim pd,
+	shipping_dw.shipment_events_dim sed,
+	shipping_dw.date_dim dd
+
+where fd.carrier_id = cd.carrier_id
+and fd.container_id = cnd.container_id
+and fd.shipment_type_id = std.shipment_type_id
+and fd.shipment_id = sd.shipment_id
+and fd.shipment_leg_id = sld.shipment_leg_id
+and fd.event_type_id = etd.event_type_id
+and fd.port_id = pd.port_id
+and fd.shipment_event_id = sed.shipment_event_id 
+and fd.date_id = dd.date_id
+ORDER BY fd.goods_cost,fd.container_size_meters, fd.container_capacity DESC;
+
+SELECT * from shipping_dw.fact_dim;
